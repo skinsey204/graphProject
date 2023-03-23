@@ -1,0 +1,199 @@
+class Graph:
+    def __init__(self, target):
+        self.vertList = {}
+        self.target = target
+        self.numVertices = 0
+
+    def __getitem__(self, vert):
+        return self.vertList[vert]
+
+    #This method generates every vertex from the 3 jugs, regardless of whether or not the vertex is reachable.
+    def createVerts(self, a, b, c):
+        counter = 0
+        for i in range(a + 1):
+            for j in range(b + 1):
+                for k in range(c + 1):
+                    tempKey = counter
+                    newVert = Vertex(tempKey, a, b, c, i, j, k)
+                    self.vertList[tempKey] = newVert
+                    self.numVertices += 1
+                    counter += 1
+
+    # This method generates every possible edge between vertexes that are only one move apart(a fill, empty, or transfer).
+    def createEdges(self):
+        for i in range(0, len(self.vertList)):
+            for j in range(0, len(self.vertList)):
+                if self.fillcheck(i, j) or self.emptycheck(i, j) or self.transfercheck(i, j):
+                    self.vertList[i].addNeighbor(self.vertList[j])
+
+    #Implementation of a breadth-first search.
+    def bfs(self):
+        start = self.vertList[0]
+        target = self.target
+        start.setDist(0)
+        start.setPred(None)
+        vertQueue = Queue()
+        vertQueue.enqueue(start)
+        while (vertQueue.size() > 0):
+            currentVert = vertQueue.dequeue()
+            for nbr in currentVert.getConnections():
+                if (nbr.getColor() == 'white'):
+                    nbr.setColor('gray')
+                    nbr.setDist(currentVert.getDist() + 1)
+                    nbr.setPred(currentVert)
+                    vertQueue.enqueue(nbr)
+                #Once the search finds the target with the shortest possible path,
+                #it appends each vertex in the path to a list. The list is reversed
+                # and then printed with "->" joining each vertex.
+                if nbr[0] == target or nbr[1] == target or nbr[2] == target:
+                    i = currentVert
+                    printList = []
+                    printList.append(str(nbr.getStatus()))
+                    while i.getStatus() != [0, 0, 0]:
+                        printList.append(str(i.getStatus()))
+                        i = i.getPred()
+                    printList.append(str([0, 0, 0]))
+                    printList = printList[::-1]
+                    print(" ->".join(printList))
+                    return
+            currentVert.setColor('black')
+        # if a path wasn't found, tell the user it is impossible
+        print("Sorry, this target is unreachable with these 3 jugs.")
+    
+    def __iter__(self):
+        for i in self.vertList:
+            return i
+        
+    def fillcheck(self, ind1, ind2):
+        vertfrom = self.vertList[ind1]
+        vertto = self.vertList[ind2]
+        if ind1 == ind2:
+            return False
+        if vertfrom.fill(0) == vertto.getStatus() or vertfrom.fill(1) == vertto.getStatus() or vertfrom.fill(2) == vertto.getStatus():
+            return True
+        return False
+    
+    def emptycheck(self, ind1, ind2):
+        vertfrom = self.vertList[ind1]
+        vertto = self.vertList[ind2]
+        if ind1 == ind2:
+            return False
+        if vertfrom.empty(0) == vertto.getStatus() or vertfrom.empty(1) == vertto.getStatus() or vertfrom.empty(2) == vertto.getStatus():
+            return True
+        return False
+    
+    def transfercheck(self, ind1, ind2):
+        vertfrom = self.vertList[ind1]
+        vertto = self.vertList[ind2]
+        indexList = [0, 1, 2]
+        if ind1 == ind2:
+            return False
+        for i in indexList:
+            for j in indexList:
+                if vertfrom.transfer(i, j) == vertto.getStatus():
+                    return True
+        return False
+
+    class Node:
+        def __init__(self, key, value, next = None):
+            self.key = key
+            self.value = value
+            self.next = next
+
+        def append(self, nbr):
+            self.next = Graph.Node(nbr.getid(), nbr.getStatus())
+    
+class Vertex:
+    def __init__(self, key, a, b, c, s1 = 0, s2 = 0, s3 = 0, color = "white", dist = 0):
+            self.id = key
+            self.vol = [a, b, c]
+            self.status = [s1, s2, s3]
+            self.connectedTo = {}
+            self.color = color
+            self.dist = dist
+            self.pred = None
+        
+    def addNeighbor(self, nbr):
+            self.connectedTo[nbr.getid()] = nbr
+
+    def __getitem__(self, ind):
+            return self.status[ind]
+
+    def getConnections(self):
+            return self.connectedTo.values()
+        
+    def getStatus(self):
+            return self.status
+        
+    def getid(self):
+            return self.id
+        
+    def getColor(self):
+            return self.color
+        
+    def setColor(self, ncolor):
+            self.color = ncolor
+
+    def setPred(self, prd):
+            self.pred = prd
+
+    def getPred(self):
+            return self.pred
+        
+    def setDist(self, dist):
+            self.dist = dist
+
+    def getDist(self):
+            return self.dist
+        
+    def getVol(self):
+            return [self.v1, self.v2, self.v3]
+        
+    def fill(self, jug):
+            temp = [self.status[0], self.status[1], self.status[2]]
+            temp[jug] = self.vol[jug]
+            return temp
+
+    def empty(self, jug):
+            temp = [self.status[0], self.status[1], self.status[2]]
+            temp[jug] = 0
+            return temp
+
+    def transfer(self, fromindex, toindex):
+            temp = [self.status[0], self.status[1], self.status[2]]
+            if fromindex == toindex:
+                return temp
+            elif temp[toindex] + temp[fromindex] > self.vol[toindex]:
+                hold = self.vol[toindex] - temp[toindex]
+                temp[toindex] = self.vol[toindex]
+                temp[fromindex] -= hold
+            else:
+                temp[toindex] += temp[fromindex]
+                temp[fromindex] = 0
+            return temp
+        
+    def __repr__(self):
+            return str(self.id) + " " + str(self.status[0]) + "-" + str(self.status[1]) + "-" + str(self.status[2])
+        
+class Queue:
+        def __init__(self):
+            self.items = []
+
+        def isEmpty(self):
+            return self.items == []
+        
+        def enqueue(self, item):
+            self.items.insert(0, item)
+
+        def dequeue(self):
+            return self.items.pop()
+        
+        def size(self):
+            return len(self.items)
+        
+        
+g1 = Graph(9)
+g1.createVerts(9, 9, 9)
+g1.createEdges()
+
+g1.bfs()
